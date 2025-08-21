@@ -9,6 +9,9 @@ import discord
 from discord.ext import commands
 from ollama import chat, Client, ChatResponse
 
+import datetime
+## to do the mute time stuff
+
 #set up the class for bikes, probably
 db = Database()
 class Bikes(db.Entity):
@@ -50,6 +53,60 @@ class ChannelOrMemberConverter(commands.Converter):
             return channel
 
         raise commands.BadArgument(f'No Member or TextChannel could be converted from "{argument}"')
+
+
+# im so so so sorry for how shit this is its like 80% example code and the rest its skitzo
+
+# stuff
+TARGET_ROLE = "annoying"
+BIKELESS_ROLE = "bikeless"
+MUTE_DURATION = 30  # seconds
+
+
+@bot.event
+async def on_message(message: discord.Message):
+    # Ignore messages from bots (including this one)
+    if message.author.bot:
+        return
+
+    #  Trigger on ANY message
+    print(f"[Trigger] {message.author} said: {message.content}")
+
+    # Only run role checks in guilds
+    if message.guild:
+        member = message.author
+
+        #  Check if member has the "annoying" role
+        annoying_role = discord.utils.get(member.roles, name=TARGET_ROLE)
+        if annoying_role:
+            try:
+                # Timeout (Discord native mute)
+                until = discord.utils.utcnow() + datetime.timedelta(seconds=MUTE_DURATION)
+                await member.timeout(until, reason="Auto-mute for having annoying role")
+
+                #uncomment to publicly shame
+                # await message.channel.send(
+                #    f"{member.mention} is annoying and can't talk for another {MUTE_DURATION} seconds."
+                #)
+            except discord.Forbidden:
+                print("Bot lacks permission to timeout members.")
+            except Exception as e:
+                print(f"Error when muting: {e}")
+
+        #  Check if member has the "bikeless" role
+        bikeless_role = discord.utils.get(member.roles, name=BIKELESS_ROLE)
+        if bikeless_role:
+            try:
+                await message.channel.send(f"<:bikelessout:1349222503758692433>")
+            except discord.Forbidden:
+                print("Bot lacks permission to send messages.")
+            except Exception as e:
+                print(f"Error when sending bikeless response: {e}")
+
+    
+    await bot.process_commands(message)
+
+
 
 @bot.command()
 async def amalive(ctx:commands.Context):
